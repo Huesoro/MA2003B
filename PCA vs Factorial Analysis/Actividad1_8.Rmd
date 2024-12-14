@@ -1,0 +1,115 @@
+---
+title: "Actividad1_8"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r}
+library(psych)
+library(ggplot2)
+library(polycor)
+library(ggcorrplot)
+```
+
+
+# 1) Lea los datos y asegúrese que están límpios.
+```{r}
+M <- read.csv("cars93.csv")
+M <- na.omit(M)
+```
+
+# 2) Reduzca la matriz de datos original a otra sólo de variables numéricas.
+
+
+```{r}
+M2 <- M[ , purrr::map_lgl(M, is.numeric)]
+```
+
+# 3) Verifique si se cumple que los datos provienen de una población normal multivariada e interprete los resultados.
+
+```{r}
+library(MVN)
+result = mvn(M2, mvnTest = "mardia", alpha = 0.05)
+result$multivariateNormality
+result$univariateNormality
+```
+Dados los valores obtenidos para las variables, se observa que el resultado de normalidad dado el valor de p obtenido, se rechaza la hipotesis nula, por lo que las variables no tienen una distribución normal.
+De igual manera el test de normalidad multivariada da un valor de p menor a 0.05, por lo que se rechaza la normalidad de la distribución multivariada.
+
+# 4) Comprueben que hay suficiente correlación entre las variables dos a dos y en su conjunto:  
+## a) Correlaciones por pares.
+```{r}
+corr.test(M2,adjust="none")  
+```
+Se observa que todos los valores cuentan con valor de p menor a 0.1, por lo que todas las variables muestran una correlación cierta entre ellas. De igual manera la correlación entre variables es fuerte, sin embargo esta varia entre una correlación fuerte positiva o negativa.
+
+
+```{r}
+mat_cor <- hetcor(M2)$correlations
+ggcorrplot(mat_cor,hc.order = T)
+```
+
+## b) Aplique la prueba de Kaiser-Meyer-Olkin  (KMO) para correlaciones y compare el estadístico de prueba resultante con la escala siguiente y concluya.
+0.00 a 0.49 inaceptable.
+0.50 a 1    aceptable para el análisis factorial
+```{r}
+R = cor(M2)
+K = KMO(R)
+cat("El valor del estadístico es: ", K$MSA)
+```
+Es valor obtenido de K es 0.81, por lo que la correlación que existe es aceptable para un analísis factorial y será una buena opción realizarlo.
+
+# 6) Realicen un análisis de componentes principales y describan la proporción de varianza total explicada por cada componente. 
+```{r}
+summary(prcomp(M2, scale = TRUE))
+```
+Se observa como los primeros 4 componentes explican el 95% de la varianza, esto nos permite reducir el analísis a estos cuatro componentes y explicar de una buena manera los datos.
+
+# 7) Con la ayuda del gráfico Scree y la tabla de distribución de la proporción acumulada de la varianza del punto anterior, decidan cuántos compontes son recomendables en este caso y que expliquen una mayoría de la varianza. 
+```{r}
+scree(R)
+```
+En este caso el gráfico de Scree, permite saber que el mejor número de componentes que se recomienda aceptar es hasta el segundo, sin embargo el número tres tambien podria ser tomado en cuenta.
+
+# 8) Realizar un análisis factorial según el método de máxima verosimilitud o componentes principales que convenga, así como dos modelos de rotación.
+
+```{r}
+quartimax = fa(R, nfactors =2, rotate = "quartimax", fm ="ml")
+quartimax
+```
+En el caso de la rotación mediante máxima verosimilitud nos da los resutlados donde esta función nos permite obtener la cantidad de factores necesarios para explicar la varianza, este muestra que 2 es el número necesario de factores. De igual manera , de igual manera los scores obtenidos tienen valores altos de correlación.
+
+```{r}
+varimax = fa(R, nfactors =2, rotate = "varimax", fm ="ml")
+varimax
+```
+
+En el caso de la rotación mediante componentes principales nos da los resutlados donde esta función nos permite obtener la cantidad de factores necesarios para explicar la varianza, este muestra que 2 es el número necesario de factores. De igual manera , de igual manera los scores obtenidos tienen valores altos de correlación.
+
+Sin embargo la rotación obtenida por maxima verosimilitud, explica de mejor manera los datos, asi como tiene un mayor minimo de correlación entre los factores.
+
+# 9) Escriban las composiciónes lineales de las variables en función de los factores, según su análisis. Interprete factores e identifique variables que más influyen.
+```{r}
+varimax$loadings
+```
+  
+V1= -0.650*Factor2 - 0.514 Factor1
+V2=  0.832*Factor2 + 0.477 Factor1
+V3=  0.825*Factor2 + 0.545 Factor1
+V4=  0.528*Factor2 + 0.846 Factor1
+V5=  0.783*Factor2 + 0.532 Factor1
+V6= -0.177*Factor2 - 0.703 Factor1
+V7= -0.212*Factor2 - 0.360 Factor1
+V8= -0.650*Factor2 - 0.133 Factor1
+
+# 10) ¿Qué difierencias esenciales encuentran entre Componentes principales y Análisis factorial?
+
+PCA se enfoca en maximizar la varianza total explicada por los componentes, esto trata de reducir la dimensionalidad del conjunto de datos sin preocuparse por las relaciones latentes entre las variables.
+Sin embargo análisis factorial busca descubrir factores latentes que expliquen las correlaciones entre las variables. 
+
+En PCA, los componentes principales son construidos para explicar la mayor cantidad posible de la varianza total de los datos. Esto hace que las combinaciones lineales obtenidas sean optimizadas para capturar la mayor cantidad de variación.
+
+Los factores son elegidos para explicar las correlaciones entre las variables, no necesariamente la varianza total. esto nos permite agrupar las variables en menos factores.
+
+Los componentes no siempre tienen una interpretación clara desde el punto de vista de las relaciones entre las variables originales.Por otro lado en el anlísis factorial el objetivo es encontrar factores que tengan una interpretación más directa.

@@ -1,0 +1,45 @@
+---
+title: "Actividad1_9"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+# 0) Se cargan las librerias
+```{r}
+library(ggplot2)
+library(factoextra)
+```
+
+# 1) Se introducen los datos
+```{r}
+pre = matrix(c(0,1,5,8.5,7.2, 1,0, 4.5, 7.8,6.7,5,4.5,0,3.6,2.2,8.5,7.8,3.6,0,2,1,5,8.5,7.2 , 0), ncol = 5) 
+```
+
+```{r}
+pre
+```
+# 2) Apliquen las funciones as.dist, hclust y plot para explorar los dendrogramas
+```{r}
+d = as.dist(pre)  # Es necesario definir como distancia la matriz simétrica inicial.
+J = hclust(d, method = "average")   # con names(J) puede conocer las variables con información del análisis clúster. Con help("hclust") puede ver las opciones de method. 
+plot(J, hang = -1, lwd = 2, col = "blue", main = "Dendrograma de conglomerados", sub = "objetos", xlab = "n",ylab = c("distancia"))
+```
+
+
+# 3) Para interpretar sobre el número óptimo de clusters puede ayudar la función fviz_nbclust
+```{r}
+fviz_nbclust(pre, FUNcluster = kmeans, method = "wss", k.max = 4)   #explore en ayuda sus diversas opciones.
+```
+
+# 5)Elige otro metodo de agrupación y elabora el dendograma, 
+
+```{r}
+d = as.dist(pre)  # Es necesario definir como distancia la matriz simétrica inicial.
+J = hclust(d, method = "centroid")   # con names(J) puede conocer las variables con información del análisis clúster. Con help("hclust") puede ver las opciones de method. 
+plot(J, hang = -1, lwd = 2, col = "blue", main = "Dendrograma de conglomerados", sub = "objetos", xlab = "n",ylab = c("distancia"))
+```
+
+¿qué diferencias encuentras entre ambos?
+
+Las distancias entre la agrupación de 3, con 4 y 5 tienen una división más clara con el metodo de centroides.

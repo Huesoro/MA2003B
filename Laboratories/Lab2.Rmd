@@ -1,0 +1,776 @@
+---
+title: "Laboratorio 2"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+```{r}
+library("moments")
+library("nortest")
+library("tidyr")
+library("moments")
+library("nortest")
+library("MASS")
+library("mlbench")
+library("VGAM")
+library("lmtest")
+library(e1071)
+library(mnormt)
+library(MVN)
+library(GPArotation)
+library(performance)
+library(polycor)
+library(ggcorrplot)
+library(psych)
+library(ggplot2)
+library(polycor)
+library(ggcorrplot)
+library(MVN)
+library(ggplot2)
+library(factoextra)
+library(rattle)
+library(psych)
+library(MVN)
+library(stats)
+library(FactoMineR)
+library(ggplot2) 
+library(factoextra)
+
+```
+
+# Problema 1
+## A) Analice la correlación entre peso y potencia
+```{r}
+library(MASS)
+df <- Cars93
+
+weight <- df$Weight
+hp <- df$Horsepower
+x <- df[c("Weight","Horsepower")]
+print("La correlación entre peso y caballos de fuerza")
+cor(weight,hp)
+```
+## B) Proponga un modelo de regresión simple
+```{r}
+library(lmtest)
+
+modelo1 <- lm(hp ~ weight)
+summary(modelo1)
+```
+## C) Realice la validación de los supuestos del modelo
+Individual, conjunta y correlación
+```{r}
+summary(modelo1)
+```
+T Test
+
+-   $H_0:=$ El coeficiente es igual a 0.
+
+-   $H_A:=$ El coeficiente no es igual a 0.
+
+Linealidad
+
+-   $H_0:=$ La relación entre la variable independiente y dependiente es lineal
+
+-   $H_A:=$ La relación es no lineal
+
+```{r}
+resettest(modelo1)
+```
+Media de cero de los residuos
+
+T Test
+
+-   $H_0:=$ La media de los errores es igual a 0.
+
+-   $H_A:=$ La media de los errores no es igual a 0.
+
+```{r}
+t.test(modelo1$residuals)
+```
+Normalidad de residuos
+
+T Test
+
+-   $H_0:=$ Los residuos tienen una distribución normal
+
+-   $H_A:=$ Los residuos no tienen una distribución normal
+
+
+```{r}
+shapiro.test(modelo1$residuals)
+qqnorm(modelo1$residuals)
+qqline(modelo1$residuals)
+hist(modelo1$residuals)
+```
+Breusch-Pagan
+
+-   $H_0:=$ Los datos tienen homocedasticidad.
+
+-   $H_A:=$ Los datos no tienen homocedasticidad.
+
+```{r}
+bptest(modelo1)  
+```
+
+Independencia
+Test de Durbin Watson
+
+-   $H_0:=$ No existe autocorrelación en los datos
+
+-   $H_A:=$ Existe autocorrelacion en los datos.
+
+```{r}
+dwtest(modelo1)
+plot(modelo1$residuals)
+abline(h=0, col = "red", lwd = 2)
+```
+#Prueba Breusch-Godfrey
+```{r}
+bgtest(modelo1)
+```
+
+
+## D) Identifique los datos atípicos e influyentes
+### Datos atipicos
+Metodo de desviación estandar
+```{r}
+residuals_values<- rstandard(modelo1)
+```
+Metodo de estandarización
+```{r}
+rstudents_values<-rstudent(modelo1)
+```
+### Datos influyentes
+Por grado de leverage
+```{r}
+hat_values<-hatvalues(modelo1)
+```
+Por distance de Cook
+```{r}
+cooks_values<-cooks.distance(modelo1)
+```
+Resumen de resultados
+```{r}
+tabla= data.frame(residuals_values,rstudents_values, hat_values, cooks_values)
+```
+Variable dependiente contra las variables predictoras
+```{r}
+library(car)
+avPlots(modelo1)
+```
+Residuos estandarizados absolutos e identifica aquellos cuyo valor absoluto es mayor a 3.
+```{r}
+plot(abs(residuals_values), ylab = "Residuos estandarizados absolutos", 
+     xlab = "Índice de observación", pch = 19, col = "blue", main = "Residuos estandarizados")
+
+# Identificar aquellos cuyo valor absoluto es mayor a 3
+abline(h = 3, col = "red", lty = 2)
+abline(h = -3, col = "red", lty = 2)
+
+```
+Gráfico de influencia
+```{r}
+influencePlot(modelo1, id=TRUE)
+```
+Se usó el criterio de residuos estandarizados, asi como ser observó si los valores tenian influencia hacia el modelo, para decidir si eliminarlos o no
+
+
+## E) Calcule:
+### 1) Intervalos de confianza para los coeficeintes de la regresión
+```{r}
+level <- 1-0.05
+confint(modelo1, level= level)
+```
+
+### 2) Intevalos de confianza para la respuesta media de la regresión
+```{r}
+colMeans(predict(modelo1 ,interval = "confidence", level=level))
+```
+
+### 3) Intervalos de predicción
+```{r}
+colMeans(predict(modelo1, interval = "prediction", level=level))
+```
+
+## F) Realice un gráfico para mostrar los intervalos de confianza
+```{r}
+Yp <- predict(modelo1,interval="prediction",level=level)
+datos1=cbind(x,Yp)
+library(ggplot2)
+ggplot(datos1,aes(x=Weight,y=Horsepower))+
+geom_point()+
+geom_line(aes(y=lwr), color="red", linetype="dashed")+
+geom_line(aes(y=upr), color="red", linetype="dashed")+
+geom_smooth(method=lm, formula=y~x, se=TRUE, level=0.95,
+col='blue', fill='pink2') + theme_light()
+
+
+```
+
+## G) Proponga un segundo modelo implementando una transformación a la variable de potencia, para cumplir normalidad
+
+
+```{r}
+lp <- seq(-1,2,0.001)
+nlp <- length(lp)
+n=length(x$Horsepower)
+D <- matrix(as.numeric(NA),ncol=2,nrow=nlp)
+d <- NA
+for (i in 1:nlp){
+  d=yeo.johnson(x$Horsepower,lambda=lp[i])
+  p=ad.test(d)
+  D[i,]=c(lp[i],p$p.value)}
+
+N = as.data.frame(D)
+plot(N$V1,N$V2,type="l",col="darkred",lwd=3,xlab="Lambda",ylab="Valor p (Normalidad)")
+```
+
+```{r}
+G = data.frame(subset(N,N$V2==max(N$V2)))
+G
+```
+
+```{r}
+Hp <- yeo.johnson(x$Horsepower,G$V1)
+par(mfrow=c(2,1))
+hist(Hp,col=0,main="Histograma de potencia transformado")
+text(x=3, y=6, expression(speed2= frac((x+1)^0.438-1,0.438)))
+hist(x$Horsepower,col=0,main="Histograma de potencia", xlab="Potencia")
+```
+
+## H) Contraste los resultados de la validación del segundo modelo con el obtenido inicialmente
+```{r}
+modelo2 <- lm(Hp ~ weight)
+summary(modelo2)
+```
+### Validación
+Individual, conjunta y correlación
+```{r}
+summary(modelo2)
+```
+T Test
+
+-   $H_0:=$ El coeficiente es igual a 0.
+
+-   $H_A:=$ El coeficiente no es igual a 0.
+
+Linealidad
+
+-   $H_0:=$ La relación entre la variable independiente y dependiente es lineal
+
+-   $H_A:=$ La relación es no lineal
+
+
+
+```{r}
+resettest(modelo2)
+```
+Media de cero de los residuos
+
+T Test
+
+-   $H_0:=$ La media de los errores es igual a 0.
+
+-   $H_A:=$ La media de los errores no es igual a 0.
+
+```{r}
+t.test(modelo2$residuals)
+```
+Normalidad de residuos
+
+T Test
+
+-   $H_0:=$ Los residuos tienen una distribución normal
+
+-   $H_A:=$ Los residuos no tienen una distribución normal
+
+
+```{r}
+shapiro.test(modelo2$residuals)
+qqnorm(modelo2$residuals)
+qqline(modelo2$residuals)
+hist(modelo2$residuals)
+```
+Breusch-Pagan
+
+-   $H_0:=$ Los datos tienen homocedasticidad.
+
+-   $H_A:=$ Los datos no tienen homocedasticidad.
+
+```{r}
+bptest(modelo2)  
+```
+
+Independencia
+Test de Durbin Watson
+
+-   $H_0:=$ No existe autocorrelación en los datos
+
+-   $H_A:=$ Existe autocorrelacion en los datos.
+
+```{r}
+dwtest(modelo2)
+plot(modelo2$residuals)
+abline(h=0, col = "red", lwd = 2)
+```
+#Prueba Breusch-Godfrey
+```{r}
+bgtest(modelo2)
+```
+
+
+
+
+# Problema 2)
+
+## A) Realice el análisis de correlación entre las variables numéricas y seleccione un conjunto de variables numéricas puedan explicar la variabilidad del precio del vehículo
+
+```{r}
+df <- Cars93
+x <-  dplyr::select_if(df, is.numeric)
+```
+
+```{r}
+#Cargamos librerias
+library(polycor)
+library(ggcorrplot)
+
+mat_cor <- hetcor(x)$correlations
+ggcorrplot(mat_cor,hc.order = T)
+```
+Dadas estas variables se tomaran las variables de MPG CITY, MPG highway, Horsepower, Fuel tank y weight
+
+## B) A partir de las variables, ajuste un modelo de regresión lineal múltiple
+```{r}
+variables <- x[c("MPG.city","MPG.highway","Horsepower","Fuel.tank.capacity","Weight")]
+
+modelo1 <- lm(df$Price ~ variables$MPG.city+variables$MPG.highway+variables$Horsepower+variables$Fuel.tank.capacity+variables$Weight)
+```
+
+
+## C) Realice la validación de los supuestos del modelo
+
+Individual, conjunta y correlación
+T Test
+
+-   $H_0:=$ El coeficiente es igual a 0.
+
+-   $H_A:=$ El coeficiente no es igual a 0.
+
+```{r}
+summary(modelo1)
+```
+
+Linealidad
+
+-   $H_0:=$ La relación entre la variable independiente y dependiente es lineal
+
+-   $H_A:=$ La relación es no lineal
+
+
+
+```{r}
+resettest(modelo1)
+```
+Media de cero de los residuos
+
+T Test
+
+-   $H_0:=$ La media de los errores es igual a 0.
+
+-   $H_A:=$ La media de los errores no es igual a 0.
+
+```{r}
+t.test(modelo1$residuals)
+```
+Normalidad de residuos
+
+T Test
+
+-   $H_0:=$ Los residuos tienen una distribución normal
+
+-   $H_A:=$ Los residuos no tienen una distribución normal
+
+
+```{r}
+shapiro.test(modelo1$residuals)
+qqnorm(modelo1$residuals)
+qqline(modelo1$residuals)
+hist(modelo1$residuals)
+```
+Breusch-Pagan
+
+-   $H_0:=$ Los datos tienen homocedasticidad.
+
+-   $H_A:=$ Los datos no tienen homocedasticidad.
+
+```{r}
+bptest(modelo1)  
+```
+
+Independencia
+Test de Durbin Watson
+
+-   $H_0:=$ No existe autocorrelación en los datos
+
+-   $H_A:=$ Existe autocorrelacion en los datos.
+
+```{r}
+dwtest(modelo1)
+plot(modelo1$residuals)
+abline(h=0, col = "red", lwd = 2)
+```
+
+
+
+## D) Identifique los datos atípicos y datos influyentes y describa los criterios implementados para su determinación
+
+Metodo de desviación estandar
+```{r}
+residuals_values<- rstandard(modelo1)
+```
+Metodo de estandarización
+```{r}
+rstudents_values<-rstudent(modelo1)
+```
+Datos influyentes
+Por grado de leverage
+```{r}
+hat_values<-hatvalues(modelo1)
+```
+Por distance de Cook
+```{r}
+cooks_values<-cooks.distance(modelo1)
+```
+Resumen de resultados
+```{r}
+tabla= data.frame(residuals_values,rstudents_values, hat_values, cooks_values)
+tabla
+```
+Variable dependiente contra las variables predictoras
+```{r}
+avPlots(modelo1)
+```
+
+
+## E) Calcule:
+Intervalos de confianza para los coeficientes de la regresión
+```{r}
+level <- 1-0.05
+confint(modelo1, level= level)
+```
+
+Intervalos de confianza para la respuesta media de la regresión
+```{r}
+head(predict(modelo1 ,interval = "confidence", level=level),3)
+```
+
+Intervalos de predicción
+```{r}
+head(predict(modelo1, interval = "prediction", level=level),3)
+```
+
+## F) Interpreta los resultados desde la perspectiva estadística y en el contexto del problema
+
+# Problema 3
+
+```{r}
+
+df <- data.frame(Adherencia=c(164,172,177,156,178,191,182,185,175,193,171,163,155,166,164,170) , Pagina=c(1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4))
+```
+
+## A) Realice un gráfico de caja y bigotes
+```{r}
+boxplot(Adherencia ~ Pagina, data = df,
+        main = "Boxplot de adherencia a la Tensión por página web",
+        xlab = "Pagina web",
+        ylab = "Adherencia",
+        col = "lightblue", border = "black")
+```
+
+## B) Estime la media para la adherencia en cada sitio web
+# 2) Hipótesis estadística
+Hipótesis nula $H_0$: No hay diferencias significativas en la adherencia por página web 
+
+Hipótesis alternativa $H_1$: Existen diferencias significativas en la adherencia por página web entre al menos dos grupos.
+
+```{r}
+modelo <- aov(Adherencia ~ as.factor(Pagina), data = df)
+summary(modelo)
+```
+
+## C) Obtenga los intervalos de confianza para la adherencia media en cada sitio
+```{r}
+tukey_result <- TukeyHSD(modelo)
+
+
+plot(tukey_result)
+```
+
+## D) Realice el análisis de varianza con un nivel de significancia 
+```{r}
+anova_model <- anova(lm(Adherencia ~ as.factor(Pagina),data=df))
+anova_model
+```
+
+
+## E) Analiza la validez del modelo
+
+Normalidad
+Hipótesis nula $H_0$: No existe normalidad en los residuos del modelo
+
+Hipótesis alternativa $H_1$: La normalidad en los residuos son normales
+```{r}
+# Test de Shapiro-Wilk para normalidad
+shapiro_test <- shapiro.test(residuals(modelo))
+print(shapiro_test)
+
+```
+
+
+Homocedasticidad
+Hipótesis nula $H_0$: Existe homocedasticidad en los residuos
+
+Hipótesis alternativa $H_1$: La varianza varia entre los grupos, heterocedasticidad
+```{r}
+library(lmtest)
+# Test de Bartlett para homocedasticidad
+bartlett_test <- bartlett.test(Adherencia ~ as.factor(Pagina), data = df)
+print(bartlett_test)
+```
+
+Independencia
+Hipótesis nula $H_0$: Las observaciones se obtuvieron de manera independiente
+
+Hipótesis alternativa $H_1$: Las observaciones tienen correlación entre ellas.
+```{r}
+
+tabla <- table(df$Adherencia, df$Pagina)
+
+chisq.test(tabla)
+```
+
+## F) Interpreta el resultado desde la perspectiva estadística y en el contexto del problema
+
+
+# Problema 4
+```{r}
+df <- wine
+prop.table(table(df$Type))
+```
+## A) Mediante un análisis discriminante realice una clasificación de la base de datos en los 3 diferentes grupos asociados los tipos de cultivares de vino.
+```{r}
+lda.model = lda(Type~., data=df)
+lda.model
+```
+
+
+
+## B) Escriba las funciones discriminantes implementadas por el modelo y el porcentaje de clasificación asociado a cada una de éstas.
+$$LD1 = -0.4034 \cdot Alcohol + 0.1653 \cdot Malic - 0.3691 \cdot Ash + 0.1548 \cdot Alcalinity - 0.0022 \cdot Magnesium + 0.6181 \cdot Phenols\\ - 1.6612 \cdot Flavanoids - 1.4958 \cdot Nonflavanoids + 0.1341 \cdot Proanthocyanins + 0.3551 \cdot Color - 0.8180 \cdot Hue \\- 1.1576 \cdot Dilution
+           - 0.0027 \cdot Proline$$
+
+$$LD2 = 0.8718 \cdot Alcohol + 0.3054 \cdot Malic + 2.3458 \cdot Ash - 0.1464 \cdot Alcalinity \\
+      - 0.0005 \cdot Magnesium - 0.0322 \cdot Phenols - 0.4920 \cdot Flavanoids - 1.6310 \cdot Nonflavanoids \\
+      - 0.3071 \cdot Proanthocyanins + 0.2532 \cdot Color - 1.5156 \cdot Hue + 0.0512 \cdot Dilution \\
+      + 0.0029 \cdot Proline$$
+      
+```{r}
+# Predicción sobre el conjunto de datos original
+lda_predictions <- predict(lda.model)
+
+# Tabla de clasificación real vs. predicha
+classification_table <- table(wine$Type, lda_predictions$class)
+classification_table
+# Porcentaje de clasificación correcta
+classification_percentage <- sum(diag(classification_table)) / sum(classification_table) * 100
+classification_percentage
+```
+
+      
+## C) Represente con histogramas la distribución de los valores asociados por cada función discriminante en cada categoría.
+```{r}
+# Valores discriminantes (LD1 y LD2)
+lda_values <- lda_predictions$x
+
+# Crear histogramas para cada función discriminante y grupo
+par(mfrow = c(2, 1))  # Dos gráficos uno encima del otro
+
+# Histograma de la primera función discriminante
+hist(lda_values[, 1], breaks = 20, col = "lightblue", main = "LD1", xlab = "LD1")
+
+# Histograma de la segunda función discriminante
+hist(lda_values[, 2], breaks = 20, col = "lightgreen", main = "LD2", xlab = "LD2")
+
+```   
+
+
+## D) Represente visualmente sus resultados mediante un gráfico de dispersión con las funciones discriminantes.
+```{r}
+# Gráfico de dispersión con LD1 y LD2
+plot(lda_values[, 1], lda_values[, 2], col = wine$Type, pch = 19,
+     xlab = "LD1", ylab = "LD2", main = "Dispersión de Funciones Discriminantes")
+legend("topright", legend = levels(wine$Type), col = 1:3, pch = 19)
+
+```
+
+## E) Determine la precisión del modelo.
+
+```{r}
+classification_percentage
+```
+
+# Problema 5)
+
+
+```{r}
+data("PimaIndiansDiabetes2")
+```
+
+## A) Prepare la base de datos omitiendo los datos faltantes.
+```{r}
+df <- na.omit(PimaIndiansDiabetes2)
+df$diabetes <- ifelse(df$diabetes=="pos",1,0)
+```
+
+## B) Divida el conjunto de datos en un conjunto de entrenamiento (80%) y un conjunto de prueba(20%)
+```{r}
+target = "diabetes"
+predictor = "glucose"
+
+df$diabetes = as.factor(df$diabetes)
+train_index = sample(nrow(df), 0.8 * nrow(df))
+train_dataset_2 = df[train_index,]
+test_dataset_2 = df[-train_index,]
+```
+
+
+
+## C) Considerando Diabetes como variable dependiente, formule un modelo de regresión logística con el cual predecir la probabilidad de que un paciente sea positivo para diabetes basado en la concentración de glucosa.
+
+```{r}
+#Ajuste del modelo
+model = glm(diabetes ~ glucose, data = train_dataset_2, family=binomial)
+
+#para la notación científica en el resumen
+options(scipen=999)
+
+#resumen del modelo
+summary(model)
+```
+
+## D) Grafique la curva de regresión logística
+```{r}
+test_dataset_2 %>%
+  ggplot(aes(glucose, diabetes)) +
+  geom_point(aes(color = as.factor(diabetes)), shape = 1) +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"),color = "gray20",
+              se = FALSE) +
+  theme_bw() +
+  labs(
+    title = "Logistic Regression Model", 
+    x = "glucose",
+    y = "diabetes"
+    )
+
+```
+
+
+## E) Ajuste un modelo de regresión logística múltiple. Justifique la selección de las variables predictoras.
+
+```{r}
+train_df <- train_dataset_2[c("glucose","pressure","mass","diabetes")]
+test_df <- test_dataset_2[c("glucose","pressure","mass","diabetes")]
+model_multiple <- glm(diabetes ~ glucose + pressure + mass, data =train_df, family = binomial)
+summary(model_multiple)
+```
+
+
+## F) Evalúe el rendimiento del modelo sobre los individuos del conjunto de prueba.
+```{r}
+prob_test = predict(model_multiple,test_df,type="response")
+predicted.classes = ifelse(prob_test > 0.5, 1, 0)
+```
+
+Obtenga la matriz de confusión, identifique:
+
+```{r}
+tabla_contingencia = table(Real = test_df$diabetes, Predicciones = predicted.classes)
+print(tabla_contingencia)
+```
+
+# Problema 6
+
+```{r}
+data("swiss")
+df <- swiss
+```
+
+## 1) Análisis Preliminar
+
+Explore la base de datos swiss para familiarizarse con las variables.
+
+```{r}
+glimpse(df)
+```
+
+
+Realice un análisis de correlación entre Fertility, Catholic, Agriculture, y Examination.
+
+```{r}
+mat_cor <- hetcor(df)$correlations
+ggcorrplot(mat_cor,hc.order = T)
+```
+
+Observe los patrones de correlación entre estas variables y discútalos.
+
+
+## 2) Propuesta del modelo
+Proponga un modelo de regresión multivariada donde las variables dependientes sean Fertility y Catholic, y las variables independientes sean Agriculture y Examination.
+
+$$Fertility = \beta_0+\beta_1Agriculture+\beta_2Examination$$
+$$Catholic=\alpha_0+\alpha_1Agriculture+\alpha_2Examination$$
+
+Especifique el modelo matemáticamente y ajuste el modelo de regresión multivariada.
+```{r}
+modelo_fertility <- lm(Fertility ~ Agriculture + Examination, data = swiss)
+modelo_catholic <- lm(Catholic ~ Agriculture + Examination, data = swiss)
+```
+
+
+
+
+## 3) Validación de supuestos del modelo
+
+
+Realice la validación de los siguientes supuestos del modelo:
+Normalidad multivariante de los residuos.
+```{r}
+residuals_fer <- residuals(modelo_fertility)
+residuals_cat <- residuals(modelo_catholic)
+residuals_data <- data.frame(Fertility = residuals_fer, Catholic = residuals_cat)
+mvn_result <- mvn(data = residuals_data, mvnTest = "mardia")
+mvn_result
+```
+
+Homoscedasticidad (varianza constante) entre las variables dependientes.
+```{r}
+#Multinormalidad Test gráfico Q-Q Plot
+plot(residuals_fer ~ fitted(modelo_fertility), main = "Residuos vs. Valores Ajustados", xlab = "Valores Ajustados", ylab = "Residuos")
+abline(h = 0, col = "red")
+plot(residuals_cat ~ fitted(modelo_catholic), main = "Residuos vs. Valores Ajustados", xlab = "Valores Ajustados", ylab = "Residuos")
+abline(h = 0, col = "red")
+```
+
+No colinealidad excesiva entre las variables independientes.
+```{r}
+#Se calcula el VIF
+vif(modelo_catholic)
+vif(modelo_fertility)
+```
+
+
+

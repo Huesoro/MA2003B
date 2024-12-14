@@ -1,0 +1,181 @@
+---
+title: "Actividad 2_5"
+author: "Ricardo kaleb Flores Alfonso"
+date: "2024-10-04"
+output: pdf_document
+---
+
+# 1. Designa tu variable categórica como variable dependiente para una clasificación y tus variables numéricas como variables independientes.
+```{r}
+library(caret)
+library(MASS)
+
+M=read.csv("kc_house_data.csv")
+head(M)
+str(M)
+
+#Remover observaciones con precio mayor a  $1.5M
+M <- subset(M, price <= 1500000) 
+
+#Agregar una nueva variable categórica: Category
+M$Category <- factor(ifelse(M$price < 500000, "low", ifelse(M$price < 1000000, "medium","high")))
+
+#Estructura de los datos
+str(M)
+
+# Nombres de columnas del data set
+all_cols <- names(M)
+
+#Crear un data frame para la columna categoría
+Category <- data.frame(M[,22])
+
+#Se eliminan las primeras tres columnas (ID, Date, y Category)
+M <-M[,-c(1:3,22)]
+
+# Identificar variables con varianza cercana a cero: remove_cols
+remove_cols <- nearZeroVar(M)
+
+# Remover variables con varianza cercana a cero
+M2 <- M[,-remove_cols]
+
+
+#Agregar la variable categoría al data frame
+M2$Category <- Category[,1]
+```
+
+# 2. Acota tu base de datos realizando un muestreo aleatorio de 300 observaciones
+
+```{r}
+set.seed(42)
+sampled_data <- M2[sample(nrow(M2), 300), ]
+```
+
+
+## 3. Gráfico de la segmentación original de los datos
+¿Qué variable o variables discriminan mejor?
+```{r}
+#Asignamos un color a cada categoria
+color = c(high="blue", medium ="purple", low = "red")
+color
+
+#Creamos un vector con el color corresponidente a cada observacion de acuerdo a la columna categoria
+col.ind = color[sampled_data$Category]
+head(col.ind)
+
+#Graficos de dispersion con el color de acuerdo a la categoria
+plot(sampled_data[,c(8:14)], pch=21, bg=col.ind, col = "gray")
+plot(sampled_data[,c(1:8)], pch=21, bg=col.ind, col = "gray")
+```
+Las variables que mejor discriminan son las de condición, medidas del la sala, la medida del techo, la cantidad de baños y habitaciones.
+
+# 4. Realiza un análisis discriminante para responder las siguientes preguntas
+##a) Obtenga la media para cada variable predictora en función del grupo 
+
+```{r}
+aggregate(. ~ Category, data = sampled_data, FUN = mean)
+
+```
+Vemos que la que tiene cada categoria varia mucho en el tamaño de la sala, del espacio para aparcar, del espacio hacia el techo, asi como el rating.
+
+## b) Muestre las probabilidades a priori para las diferentes clases, es decir, la distribución de datos en función de la variable dependiente
+```{r}
+prop.table(table(sampled_data$Category))
+```
+Para esta muestra de datos, se tiene una alta cantidad de casos de viviendas baratas y medianas, sin embargo de viviendas caras existen muy pocas en la muestra.
+## c) Determine y escriba la(s) funcion(es) lineal(es) discriminante(s).
+```{r}
+lda.model = lda(Category~., data=sampled_data)
+lda.model
+```
+
+$$
+LD1 = 0.0876 \cdot {bedrooms} - 0.3678 \cdot {bathrooms} - 0.0003 \cdot {sqft_living} - 0.00001 \cdot {sqft_lot} - 0.3667 \cdot {floors} - 0.3615 \cdot {condition} - 0.7478 \cdot {grade} - 0.0002 \cdot {sqft_above} + 0.0244 \cdot {yr_built} - 0.0009 \cdot {zipcode} - 2.2024 \cdot {lat} + 0.7461 \cdot {long} - 0.0006 \cdot {sqft_living15} + 0.00001 \cdot {sqft_lot15}
+$$
+
+
+$$
+LD2 = 0.4690 \cdot {bedrooms} - 0.6243 \cdot {bathrooms} + 0.0006 \cdot {sqft_living} - 0.00001 \cdot {sqft_lot} + 0.9450 \cdot {floors} - 0.8024 \cdot {condition} - 0.2671 \cdot {grade} - 0.0017 \cdot {sqft_above} - 0.0086 \cdot {yr_built} + 0.0009 \cdot {zipcode} + 3.4404 \cdot {lat} + 2.5391 \cdot {long} + 0.0011 \cdot {sqft_living15} + 0.0001 \cdot {sqft_lot15}
+$$
+
+```{r}
+predicted = predict(lda.model)
+
+names(predicted)
+
+head(predicted$class)
+
+#Se dan las probabilidades a posteriori de acuerdo a la clase a la que podría pertenecer
+head(predicted$posterior)
+
+#valores discriminantes lineales
+head(predicted$x)
+```
+
+
+
+## d) Grafique el histograma de valores discriminantes en cada grupo.
+```{r}
+
+#ldahist(data=predicted$x[,1],g=sampled_data$Category,type="both",main="Histograma de la función discriminante LD1",wd=4)
+ldahist(data=predicted$x[,2],g=sampled_data$Category,type="both",main="Histograma de la función discriminante LD2",)
+```   
+
+## e) Muestre gráficamente la segmentación de los datos. Realiza el gráfico de dispersión con las predicciones hechas por el modelo.
+
+```{r}
+#Asignamos un color a cada especie
+color2=c(high="brown",medium="orange",low="yellow")
+
+#Creamos un vector con el color corresponidente a cada observacion de acuerdo a la columna Species
+col.ind2=color2[predicted$class]
+
+#Graficos de dispersion con el color de acuerdo al tipo de especie
+#Graficos de dispersion con el color de acuerdo a la categoria
+plot(sampled_data[,c(8:14)], pch=21, bg=col.ind, col = "gray")
+plot(sampled_data[,c(8:14)], pch=21, bg=col.ind2, col = "gray")
+
+```
+
+```{r}
+plot(LD2~LD1, data=predicted$x, pch=21,col="gray",bg=col.ind,main="Valores discriminantes en las observaciones")
+```
+Vemos que ambos componentes principales logran discriminar de una buena manera las tres categorias sin embargo si existe una mezcla importante entre las clases bajas y medias.
+
+## f) Evalúe la precisión del modelo. ¿El modelo es bueno para pronosticar? Indique el porcentaje de predicciones erróneas y la tabla de contingencia.
+```{r}
+
+table(pred=predicted$class, true=sampled_data$Category)
+
+# porcentaje de observaciones clasificadas erróneamente
+rate=1-mean(predicted$class==sampled_data$Category)
+
+
+cat("\n El modelo tiene un porcentaje de error de: ",rate*100,"%")
+```
+El modelo es bueno para pronosticar a un 20%, a pesar de que esto es un porcentaje alto, para el caso de las casas yo considero que puede ser utilizado dependiendo lo que se busque categorizar.
+
+# 5) Valide los supuestos del modelo 
+
+```{r}
+library(heplots)
+library(MVN)
+
+
+mvn(sampled_data[, c(1:14)])
+# Homocedasticidad
+boxM(sampled_data[, c(1:14)], sampled_data$Category)
+
+# Gráficos de dispersión para cada par de variables por grupo
+pairs(sampled_data[, c(1:5)], col=sampled_data$Category)
+pairs(sampled_data[, c(5:10)], col=sampled_data$Category)
+pairs(sampled_data[, c(10:15)], col=sampled_data$Category)
+
+
+# Prueba de multicolinealidad
+library(car)
+vif_model <- lm(Category ~ bedrooms + bathrooms + sqft_living + sqft_lot + floors + condition + grade + sqft_above + yr_built + zipcode + lat + long + sqft_living15 + sqft_lot15, data = sampled_data)
+vif(vif_model)
+```
+
+
+El modelo obtenido no pasa los supuestos de normalidad multivariada, pues tiene un valor de p menor a 0.05, tampoco las variables por separado cumplen los supuestos de normalidad. El modelo no pasa el test de homocedasticidad, pues su valor de p es menor a 0.05. El modelo tampoco pasa los supuestos de multicolinealidad. Por esto se concluye que el modelo no es significativo para describir las variables.

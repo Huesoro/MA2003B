@@ -1,0 +1,359 @@
+---
+title: "Laboratorio 1"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+```{r}
+library(mnormt)
+library(MVN)
+library(ggplot2)
+library(psych)
+library(performance)
+library(GPArotation)
+library(mnormt)
+library(datasets)
+```
+
+
+# Problema 1
+Descomposición espectral
+```{r}
+mat <- matrix(c(4.4,0.8,0.8,5.6),ncol=2)
+mat
+```
+```{r}
+eigenvalues <- eigen(mat)$values
+eigenvectors <- eigen(mat)$vectors
+print("Valores")
+eigenvalues
+print("Vectores")
+eigenvectors
+```
+
+Reconstruida
+```{r}
+# A debería ser igual a Q * Lambda * inv(Q)
+A_reconstructed <- eigenvectors %*% diag(eigenvalues) %*% solve(eigenvectors)
+
+cat("\nMatriz reconstruida A (verificación):\n")
+print(A_reconstructed)
+```
+
+# Problema 2
+Hallar la probabilidad
+```{r}
+
+miu <- c(2.5,4)
+cov <- matrix(c(1.2,0,0,2.3),ncol=2)
+x_1 <- c(2,3)
+prob <- pmnorm(x_1,mean=miu,varcov=cov)
+print("La probabilidad es")
+prob
+```
+
+# Problema 3
+calcular las distancias de Mahalanobis y hallar las proporciones de datos por debajo de los percentiles de Chi-cuadrada corespondientes a 10, 20, 30, 40, 50, 60, 70, 80 y 90.
+```{r}
+df <- read.csv("datosX1X2X3.csv")
+```
+
+```{r}
+media <- colMeans(df)
+cov_x <- cov(df)
+dist_mahalanobis <- mahalanobis(df, center = media, cov = cov_x)
+head(dist_mahalanobis)
+```
+
+```{r}
+# Definir los niveles de confianza (1 - alfa)
+niveles_confianza <- c(0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90)
+
+# Calcular los percentiles de la distribución Chi-cuadrada con gl = 3
+percentiles_chi2 <- qchisq(niveles_confianza, df = 3)
+
+# Mostrar los percentiles
+print(percentiles_chi2)
+```
+
+```{r}
+# Calcular las proporciones de datos por debajo de cada percentil de Chi-cuadrada
+proporciones <- sapply(percentiles_chi2, function(p) mean(dist_mahalanobis <= p))
+
+# Mostrar las proporciones
+print(proporciones)
+```
+
+```{r}
+# Graficar los percentiles de Chi-2 vs la proporción hallada
+plot(niveles_confianza, proporciones, type = "b", col = "blue", pch = 19,
+     xlab = "1 - alfa (Percentiles Chi-2)", ylab = "Proporción hallada",
+     main = "Gráfico de Chi-2(1-alfa, gl = 3) vs Proporción hallada")
+
+# Agregar línea de referencia de identidad
+abline(a = 0, b = 1, col = "red", lty = 2)
+```
+Se observa que las proporciones halladas están cerca de los percentiles teóricos de la distribución Chi-cuadrada, podríamos decir que x sigue una distribución normal multivariada.
+
+# Problema 4
+A los datos numéricos del problema 3 plantee las hipótesis de la Prueba de normalidad
+Hipótesis nula $H_0$: Los datos siguen una distribución normal multivariada.
+
+Hipótesis alternativa $H_1$: Los datos no siguen una distribución normal multivariada.
+```{r}
+df <- read.csv("datosX1X2X3.csv")
+mvn_mardia <- mvn(df, mvnTest = "mardia")
+mvn_hz <- mvn(df, mvnTest = "hz")
+
+p_mardia <- mvn_mardia$multivariateNormality$`p value`
+p_hz <- mvn_hz$multivariateNormality$`p value`
+
+
+print(paste("P-Value Sesgo Mardia:", p_mardia[1]))
+print(paste("P-Value Curtosis Mardia:", p_mardia[2]))
+
+# ¿Cual es el valor p de la prueba de normalidad multivaridad de Henze-Zirkler's?
+print(paste("P-Value HZ:", p_hz))
+```
+El test de sesgo y curtosis es mayor a 0.05, por lo que ambos pasan el supuesto de normalidad. 
+De igual manera el test de Henze-Zirkler obtuvo un valor de 0.503, por lo que se cumple el supuesto de normalidad
+
+# Problema 5
+## A) Realice la prubea de normalidad de mardia
+```{r}
+olmos <- read.csv("olmos.csv")
+df <- olmos[c("Longitud","Diametro","Altura")]
+mardia <- mvn(df, mvnTest = "mardia")
+mardia$multivariateNormality
+mardia$univariateNormality
+```
+
+## B) Elabore la gráfica de contorno
+```{r}
+# Generar la matriz de covarianza y el vector de medias
+media <- colMeans(df)
+cov_matrix <- cov(df)
+
+
+# Graficar el contorno de la normal multivariada
+library(MASS)
+contour_plot <- kde2d(df$Longitud, df$Diametro, n = 50)
+contour(contour_plot)
+
+```
+## C) Con el vector de medias y la matriz de covarianza de la normal multivariada en en el inciso A, calcule la probabilidad de que P(X <= (0.25, 0.25, 0.25) )
+```{r}
+library(MVN)
+
+prob <- pmnorm( x = c(0.25, 0.25, 0.25), mean = media, varcov = cov_matrix)
+prob
+```
+## D) Calcula la distancia de Mahalanobis de cada observación al centroide
+```{r}
+media <- colMeans(olmos)
+cov_matrix <- cov(olmos)
+# Calcular la distancia de Mahalanobis para cada observación
+dist_mahalanobis <- mahalanobis(olmos, center = media, cov = cov_matrix)
+
+# Identificar las observaciones más cercanas y más alejadas al centroide
+max_dist <- which.max(dist_mahalanobis)
+min_dist <- which.min(dist_mahalanobis)
+
+cat("Observación más alejada:", max_dist, "\n")
+cat("Observación más cercana:", min_dist, "\n")
+
+```
+
+## E) Aplica un análisis de componentes principales a los datos y con base en al menos tres criterios
+```{r}
+# Aplicar PCA
+pca_result <- prcomp(olmos, scale = TRUE)
+
+# Mostrar la varianza acumulada
+summary(pca_result)
+
+# Gráfico de Scree
+plot(pca_result, type = "l", main = "Scree Plot")
+
+# Graficar las puntuaciones de los dos primeros componentes
+biplot(pca_result, main = "Biplot de los dos primeros componentes")
+
+# Obtener las combinaciones lineales de los componentes
+pca_result$rotation
+
+```
+## F) Escribir las combinaciones lineales
+```{r}
+pca_result$rotation[,c(1,2)]
+```
+## Utilizando los dos primeros componentes hacer una gráfica de dispersión  de las puntuaciones. Comentar el gráfico en función de la variabilidad.
+
+```{r}
+# Obtener puntuaciones de los dos primeros componentes
+scores <- pca_result$x[, 1:2]
+
+# Gráfico de dispersión
+plot(scores, xlab = "Componente Principal 1", ylab = "Componente Principal 2", main = "Gráfico de Dispersión de los dos primeros Componentes")
+```
+## H) Hacer un gráfico vectorial de las variables e interpretar sus relaciones.
+
+```{r}
+# Gráfico biplot
+biplot(pca_result, scale = 0)
+```
+# Problema 6
+## A) Justifique por qué es adecuado el uso del Análisis factorial (hacer la prueba de esfericidad de Bartlett y KMO).
+```{r}
+# Matriz de correlación
+corr.test(olmos)
+
+# Prueba de esfericidad de Bartlett
+check_sphericity_bartlett(olmos)
+
+# Medida de adecuación muestral de Kaiser-Meyer-Olkin (KMO)
+KMO(cor(olmos))
+```
+## B) Justifique el número de factores principales que se utilizarán en el modelo
+```{r}
+pca_result = prcomp(olmos)
+# Eigenvalores
+pca_result$sdev
+# Aportacion acumulada
+cumsum(pca_result$sdev) / sum(pca_result$sdev)
+# Combinaciones Lineales
+pca_result$rotation
+
+
+cor_olmos = cor(olmos)
+scree(cor_olmos)
+```
+
+## C) Identifique las comunalidades de los factores del modelo propuesto, y los errores: interprete si se necesita un nuevo factor.
+```{r}
+# Realizar análisis factorial con el número de factores seleccionado
+fa_result <- fa(cor_olmos, nfactors = 2, rotate = "none")
+
+fa_varimax = fa(cor_olmos, nfactors = 2, rotate = "varimax")
+fa_oblimin = fa(cor_olmos, nfactors = 2, rotate = "oblimin")
+
+
+data.frame(Normal = fa_result$communalities, VARIMAX = fa_varimax$communalities, OBLIMIN = fa_oblimin$communalities)
+cbind(fa_result$residual, fa_varimax$residual, fa_oblimin$residual)
+
+mr1 = data.frame(MR1_NORMAL = fa_result$loadings[,1], MR1_VARIMAX = fa_varimax$loadings[,1], MR1_OBLIMIN = fa_oblimin$loadings[,1])
+
+mr2 = data.frame(MR2_NORMAL = fa_result$loadings[,2], MR2_VARIMAX = fa_varimax$loadings[,2], MR1_OBLIMIN = fa_oblimin$loadings[,2])
+
+mr1
+mr2
+```
+## D) Encuentre con ayuda de un gráfico de variables qué conviene más sin rotación o con rotación varimax.
+```{r}
+# Realizar análisis factorial con rotación varimax
+fa_varimax <- fa(olmos, nfactors = 2, rotate = "varimax")
+
+# Gráfico de diagrama de factores
+fa.diagram(fa_varimax)
+fa.diagram(fa_result)
+```
+¿Tienen interpretación en el contexto del problema los factores encontrados?
+
+
+# Problema 7 
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+## A) Haz un leve análisis descriptivo para cada variable por especie: media, desviación estándar, diagramas de caja y bigote
+```{r}
+descriptive_stats <- iris %>%
+  group_by(Species) %>%
+  summarise(
+    Sepal.Length_promedio = mean(Sepal.Length),
+    Sepal.Length_desviacion = sd(Sepal.Length),
+    Sepal.Width_promedio = mean(Sepal.Width),
+    Sepal.Width_desviacion = sd(Sepal.Width),
+    Petal.Length_promedio = mean(Petal.Length),
+    Petal.Length_desviacion = sd(Petal.Length),
+    Petal.Width_promedio = mean(Petal.Width),
+    Petal.Width_desviacion = sd(Petal.Width)
+  )
+descriptive_stats
+
+```
+
+```{r}
+ggplot(iris, aes(x = Species, y = Sepal.Length)) + geom_boxplot() + ggtitle("Diagrama de Caja - Sepal Length")
+ggplot(iris, aes(x = Species, y = Sepal.Width)) + geom_boxplot() + ggtitle("Diagrama de Caja - Sepal Width")
+ggplot(iris, aes(x = Species, y = Petal.Length)) + geom_boxplot() + ggtitle("Diagrama de Caja - Petal Length")
+ggplot(iris, aes(x = Species, y = Petal.Width)) + geom_boxplot() + ggtitle("Diagrama de Caja - Petal Width")
+```
+
+## B) Realiza dos análisis clouster jerárquicos usando dos distintas distancias y métodos de aglomeración. Sigue los siguientes puntos para cada uno de ellos:
+### Distance euclidiana
+```{r}
+x <- iris[1:4]
+dist_iris <- dist(x,method="euclidean")
+
+# Clúster jerárquico usando el método "complete"
+jerarquico1 <- hclust(dist_iris, method = "complete")
+
+# Dendograma
+plot(jerarquico1, main = "Dendograma (Distancia Euclidiana, Complete)")
+
+# Seleccionar número óptimo de grupos y colorear el dendograma
+rect.hclust(jerarquico1, k = 3, border = "blue")
+
+# Asignación de grupos a cada observación
+grupo1 <- cutree(jerarquico1, k = 3)
+
+# Resultado: combinación de iris con el grupo asignado
+resultado1 <- cbind(iris, Grupo = grupo1)
+
+# Contar observaciones mal clasificadas
+table(resultado1$Species, resultado1$Grupo)
+
+# Calcular medias por grupo de clasificación
+aggregate(. ~ Grupo, data = resultado1[, -5], FUN = mean)
+```
+
+```{r}
+# Clustering jerárquico usando la distancia minkowski y el método de enlace promedio (average linkage)
+dist_minkowski <- dist(x, method = "minkowski")
+jerarquico2 <- hclust(dist_minkowski, method = "average")
+
+# Dendograma y selección del número óptimo de grupos
+plot(jerarquico2, main = "Dendograma - Método Average Linkage")
+rect.hclust(jerarquico2, k = 3, border = "blue")
+
+# Asignar las observaciones a los grupos
+grupos2 <- cutree(jerarquico2, k = 3)
+resultado2 <- cbind(iris, Grupo = grupos2)
+
+# Contar las observaciones mal clasificadas
+table(iris$Species, grupos2)
+# Calcula la media para cada grupo de clasificación por el método
+aggregate(. ~ Grupo, data = resultado2[, -5], FUN = mean)
+```
+### Interpreta el dendograma obtenido y concluye para los dos métodos. Indica cuál es mejor y por qué.
+Ambos dendogramas funcionan de una buena manera, sin embargo el obtenido a traves de la distancia de minkowski logró clasificar de mejor manera las clases de plantas
+
+## C) Hacer el gráfico de agromeración no-jerárquica con el método de k-medias para las especies de Iris.
+```{r}
+set.seed(123)
+kmeans_result <- kmeans(x, centers = 3)
+
+# Asignar las observaciones a los grupos formados por K-means
+iris$KMeans_Grupo <- kmeans_result$cluster
+
+# Gráfico de los grupos formados por K-means
+pairs(iris[, -5], col = kmeans_result$cluster, main = "Grupos formados por K-means")
+
+# Contar las observaciones mal clasificadas
+table(iris$Species, iris$KMeans_Grupo)
+```
+
+## D) ¿Cuál de los dos métodos resultó mejor par la clasificación de acuerdo a la clasificacion de cada observación en las especies y en los grupos.
+
+El mejor metodo fue el jerarquico con distancia de minkowski, este tuvo menos errores al clasificar los datos obtenidos.

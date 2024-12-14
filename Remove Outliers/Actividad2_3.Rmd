@@ -1,0 +1,191 @@
+---
+title: "Actividad2_3"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+
+```{r}
+df <- read.csv("datosRes.csv")
+y <- df$Resistencia
+x1<-df$Longitud
+x2<-df$Altura.matriz
+x3<-df$Altura.poste
+x4<-df$Altura.amarre
+```
+
+# 1) Seleccion de variables
+
+```{r}
+modelo <- lm(y ~ x1+x2+x3+x4)
+```
+
+
+
+AIC
+```{r}
+step(modelo,direction="both",trace=1)
+```
+
+BIC
+```{r}
+n <- nrow(df)
+modelo <- lm(y ~ x1+x2+x3+x4)
+step(modelo,direction="both",trace=1, k=log(n))
+```
+
+```{r}
+modelo <- lm(y ~ x1+x2+x4)
+```
+
+
+```{r}
+summary(modelo)
+```
+
+
+# 2) Datos atípicos
+Metodo de desviación estandar
+```{r}
+residuals_values<- rstandard(modelo)
+residuals_values
+```
+Metodo de estandarización
+```{r}
+rstudents_values<-rstudent(modelo)
+rstudents_values
+```
+
+# 3) Datos influyentes
+Por grado de leverage
+```{r}
+hat_values<-hatvalues(modelo)
+hat_values
+```
+Por distance de Cook
+```{r}
+cooks_values<-cooks.distance(modelo)
+cooks_values
+```
+# 4) Resumen de resultados
+```{r}
+tabla= data.frame(residuals_values,rstudents_values, hat_values, cooks_values)
+tabla
+```
+```{r}
+library(car)
+```
+
+# 5) Gráficos complementarios
+Variable dependiente contra las variables predictoras
+```{r}
+avPlots(modelo)
+```
+
+Residuos estandarizados absolutos e identifica aquellos cuyo valor absoluto es mayor a 3.
+```{r}
+plot(abs(residuals_values), ylab = "Residuos estandarizados absolutos", 
+     xlab = "Índice de observación", pch = 19, col = "blue", main = "Residuos estandarizados")
+
+# Identificar aquellos cuyo valor absoluto es mayor a 3
+abline(h = 3, col = "red", lty = 2)
+abline(h = -3, col = "red", lty = 2)
+
+# Destacar los puntos que superan el valor absoluto de 3
+ #No hay datos mayores a 3
+```
+
+
+Gráfico de influencia
+```{r}
+influencePlot(modelo, id=TRUE)
+```
+
+# 6) Ajustes del modelo
+En caso de que haber datos influyentes, realice el análisis de regresión sin éstos y reporte la comparación en ambos modelos.
+```{r}
+# Crear un nuevo dataframe sin los puntos influyentes
+df_influyente <- df[-c(9,15,17,18), ]
+
+# Ajustar un nuevo modelo sin los puntos influyentes
+modelo_ajustado <- lm(y ~ x1 + x2 + x4, data = df_influyente)
+
+# Comparar los dos modelos
+summary(modelo_ajustado)
+```
+
+BIC
+```{r}
+n <- nrow(df)
+modelo <- lm(y ~ x1+x2+x3+x4)
+step(modelo_ajustado,direction="both",trace=1, k=log(n))
+```
+
+## Variabilidad explicada por el modelo
+El modelo inicial reportó la siguiente variabilidad y valor de p:
+
+Multiple R-squared:  0.9896,	Adjusted R-squared:  0.9881 
+F-statistic:   667 on 3 and 21 DF,  p-value: < 2.2e-16
+
+El modelo nuevo reportó esta variabilidad y valor de p:
+Multiple R-squared:  0.9896,	Adjusted R-squared:  0.9881 
+F-statistic:   667 on 3 and 21 DF,  p-value: < 2.2e-16
+
+Es por esto que podemos ver que la R ajustada con valor 0.9881, y su F Statistic es de 667, es mejor que el modelo original. Pero el haber eliminado datos, no hizo que el modelo mejorará. 
+
+## Supuestos de los modelos
+### Linealidad)
+
+```{r}
+# Gráfico de residuos vs. valores ajustados
+plot(modelo_ajustado$fitted.values, modelo$residuals, 
+     xlab = "Valores Ajustados", ylab = "Residuos", 
+     main = "Residuos vs. Valores Ajustados")
+abline(h = 0, col = "red")
+```
+Se observa como los residuos tiene promedio alrededor de 0 y no muestran algun tipo de patron
+
+### Independencia de errores
+```{r}
+
+library(lmtest)
+
+# Prueba de Durbin-Watson para autocorrelación de los errores
+dwtest(modelo_ajustado)
+```
+El test de durbin watson presente un valor de 0.1814, lo cual es mayor a 0.05, significa que no hay evidencia para rechazar que no existe autocorrelación entre los errores.
+
+### Homocedasticidad
+```{r}
+library(lmtest)
+
+bptest(modelo_ajustado)
+```
+Con el valor de breusch pagan con valor de $p=0.4104>0.05$, no hay evidencia para rechazar la hipotesis nula, que dice que los errores tienen varianza constante.
+### Normalidad de residuos
+```{r}
+# Gráfico Q-Q plot
+qqnorm(modelo_ajustado$residuals)
+qqline(modelo_ajustado$residuals, col = "red")
+
+# Prueba de Shapiro-Wilk para normalidad de los residuos
+shapiro.test(modelo_ajustado$residuals)
+```
+Con el valor de $p=0.9504>0.05$ no hay evidencia para rechazar la hipotesis nula, de manera que se acepta que existe normalidad en los residuos.
+
+
+
+## AIC y BIC
+
+AIC : 
+Modelo anterior: 32.54
+Modelo nuevo: 31.27, no presentó cambios al eliminar datos
+BIC: 
+Modelo Anterior 38.64
+Modelo Nuevo: 36.14, no presentó cambios al eliminar datos
+
+# Conclusión
+En este caso el modelo obtenido explica al 98.81% la variabilidad de $y$, asi como pasa todos los supuestos para ser valido. De igual manera demuestra tener significancia y esta optimizado respecto a las variables que incluye. Se eliminaron los outliers presentes, sin embargo esto no mejoró el modelo, lo cual significa que no estaban teniendo tanta influencia respecto al modelo. Sin embargo en casos donde hayan más valores atipicos, puede influir al modelado de los datos.
+
+Para este caso el modelo obtenido es muy bueno y puede ser usado para predecir datos futuros.

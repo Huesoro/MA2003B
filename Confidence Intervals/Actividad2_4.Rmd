@@ -1,0 +1,110 @@
+---
+title: "Actividad 2_4"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+# 0) Se carga la base de datos
+```{r pressure, echo=FALSE}
+df <- read.csv("datosRes.csv")
+library(ggplot2)
+library(car)
+```
+
+# 1) Modelos de regresión
+```{r}
+unimodel <- lm(Resistencia ~ Altura.matriz, data = df)
+multimodel <- lm(Resistencia ~ Altura.matriz + Longitud, data = df)
+```
+
+# 2) Intervalos de regresión
+## A) Los intervalos de confianza para los coeficientes de regresión
+```{r}
+level <- 1-0.05
+confint(unimodel, level= level)
+```
+```{r}
+confint(multimodel, level = level)
+```
+
+## B: Los intervalos de confianza para la respuesta media de las primeras 6 observaciones:
+```{r}
+sixinfo <- head(df, 6)
+predict(unimodel, newdata = sixinfo ,interval = "confidence", level=level)
+```
+
+```{r}
+predict(multimodel, newdata = sixinfo ,interval = "confidence", level=level)
+```
+
+## C: Los intervalos de predicción para las primeras 6 observaciones:
+```{r}
+predict(unimodel,newdata = sixinfo, interval = "prediction", level=level)
+```
+
+```{r}
+predict(multimodel,newdata = sixinfo, interval = "prediction", level=level)
+```
+
+# 3. Intervalos para una nueva observación
+Calcule los 3 intervalos anteriores para una nueva observación con los siguientes valores:
+## Intervalo de confianza para coeficientes
+```{r}
+xe = data.frame(Resistencia= 33.49,Longitud= 12,Altura.matriz= 535,Altura.poste=2,Altura.amarre=1)
+confint(unimodel, level=level, newdata = xe)
+```
+```{r}
+confint(multimodel, level=level, newdata = xe)
+```
+
+## Intervalo de confianza para respuesta media
+```{r}
+predict(unimodel, newdata = xe ,interval = "confidence", level=level)
+```
+
+```{r}
+predict(multimodel, newdata = xe ,interval = "confidence", level=level)
+
+```
+
+## Intervalo de predicción
+```{r}
+predict(unimodel,newdata = xe, interval = "prediction", level=level)
+```
+
+```{r}
+predict(multimodel,newdata = xe, interval = "prediction", level=level)
+```
+
+# 4) Representación gráfica
+```{r}
+Yp <- predict(unimodel,interval="prediction",level=level)
+datos1=cbind(df,Yp)
+library(ggplot2)
+ggplot(datos1,aes(x=Altura.matriz,y=Resistencia))+
+geom_point()+
+geom_line(aes(y=lwr), color="red", linetype="dashed")+
+geom_line(aes(y=upr), color="red", linetype="dashed")+
+geom_smooth(method=lm, formula=y~x, se=TRUE, level=0.95,
+col='blue', fill='pink2') + theme_light()
+
+
+```
+# 5) Elipse de confianza
+```{r}
+confidenceEllipse(multimodel, fill = TRUE, lwd = 0, levels=0.95,
+which.coef=c("Altura.matriz","Longitud"), main = "99% Confianza")
+```
+
+# 6) Conclusiones
+En este trabajo se evaluo un modelo de una variable, donde se usó Altura.matriz como predictor de Resistencia, y otro múltiple, con Altura.matriz y Longitud como variables predictoras.
+
+En ambos modelos, los intervalos de confianza para los coeficientes muestran una influencia significativa sobre la variable de dependiente, sin embargo el modelo múltiple presenta un mejor ajuste.
+
+Al analizar los intervalos de predicción y confianza para las primeras 6 observaciones se encontró que el modelo múltiple produce predicciones mejores predicciones, que el modelo simple. Esto sugiere que la variable elegida es significativa.
+
+La elipse de confianza para los coeficientes del modelo múltiple muestra de manera gráfica clara la incertidumbre de las estimaciones por coeficiente. La inclusión de más variables mejora la predicción y reduce la incertidumbre en las estimaciones de los coeficientes.
+
+En este trabajo se muestra la importancia de incluir múltiples variables predictoras en un modelo de regresión, debido a que produce mejores predicciones y un mejor entendimiento de las relaciones entre las variables.

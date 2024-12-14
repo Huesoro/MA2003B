@@ -1,0 +1,146 @@
+---
+title: "Actividad 1"
+author: "Kaleb"
+date: "2024-09-17"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r}
+library("tidyverse")
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Problema 1
+
+Dadas las siguientes matrices 
+```{r}
+A <- matrix(c(2, 4, -3,
+              0, -2, 5,
+              9, 0, 6),ncol=3, byrow=TRUE)
+B <- matrix(c(8, 6, -2,
+              -7, 9, -5,
+              -3, 5, 1),ncol=3, byrow=TRUE)
+```
+
+A) Suma de matrices
+
+```{r}
+A + B
+```
+
+B) Realiza 4A + 3B
+```{r}
+4 * A + 3 *B
+```
+
+C) Realiza la transpuestas A 
+```{r}
+t(A)
+```
+
+D) Realiza A^-1
+```{r}
+solve(A)
+```
+
+E) Encuentra el determinante de A y A'
+
+Determinante de A
+```{r}
+det(A)
+```
+Determinante de A transpuesta
+```{r}
+det(t(A))
+```
+Problema 2.
+Dadas las siguientes matrices 
+```{r}
+A <- matrix(c(2, 1, 3, -3, 
+              3, 0, -2, -1, 
+              4, 5, 0, -5), 
+            nrow = 3, byrow = TRUE)
+
+B <- matrix(c(4, 2, 
+              -3, 1, 
+              5, -2, 
+              8, 0), 
+            nrow = 4, byrow = TRUE)
+
+```
+
+Calcula AB
+```{r}
+A %*% B
+```
+Problema 3
+
+Cargar datos de mcdonalds
+
+```{r}
+mcdonalds <- read_csv("mc-donalds-menu.csv")
+```
+Selecciona las variables cuantitativas
+```{r}
+cuantitative <- mcdonalds %>% select(Calories,Protein,Carbohydrates,Sugars)
+```
+
+A) Genera el vector de medias
+```{r}
+cuantitative %>% colMeans()
+```
+
+
+B) Matriz de covarianza
+```{r}
+cuantitative %>% cov()
+```
+
+C) Matriz de correlacion
+```{r}
+cuantitative %>% cor()
+```
+D) Valores y vectores propios a partir de la matriz de covarianzas y de la de
+correlación.
+
+Valores y vectores propios de matriz de la matriz de correlación
+```{r}
+cuantitative %>% cor() %>% eigen()
+```
+Valores y vectores propios de la matriz de covarianza
+```{r}
+cuantitative %>% cov() %>% eigen()
+```
+
+
+Diferentes maneras de obtener resultados.
+
+Cuando trabajé con matrices fue más facil usar las librerias estandar de R, sin embargo al trabajar sobre datos en excel, me parece más facil trabajar sobre tidyverse, pues permite crear pipelines entre comando y comando, asi como facilita el uso de funciones ya hechas para generar resultados.
+
+Diferencias y semejanzas entre los vectores propios de las matrices que se te piden obtener.
+
+Como semejanza se muestra que ambos sets de eigenvectores indican las direcciones de las varianzas para cada matriz. Sin embargo las diferencias se basan en las unidades en las que se interpretan las varianzas. 
+
+En la matriz de covarianza se tienen las unidades originales de los datos, sin embargo en la matriz de correlación se estandarizan las variables, lo que elimina la diferencia de escala entre ellas, de esta manera se obtienen valores entre -1 y 1
+
+
+La matriz de correlación muestra la correlación de los datos en cada dirección de la matriz de correlación
+
+```{r}
+cuantitative %>% cor() %>% eigen() %>% .$values
+```
+
+Los valores propios representan las covarianzas de los datos en cada dirección de la matriz de covarianza
+
+```{r}
+cuantitative %>% cov() %>% eigen() %>% .$values
+```
+
+
+

@@ -1,0 +1,50 @@
+---
+title: "Actividad1_10"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(factoextra)
+```
+
+# 1) Lea los datos con read.csv y cree una nueva matriz sin las variables fecha y hora, finalmente, cree una nueva matriz estandarizada. 
+```{r}
+M = read.csv("TLA2021.csv")
+names(M)
+M1 = M[, -1]  # quitando la columna de fecha
+Mstand = scale(x = M1, center = TRUE, scale = TRUE)
+```
+
+# 2. Aplique el algoritmo de k-means y su gráfico con las funciones kmeans y fviz_cluster. Podría serles útil: 
+```{r}
+M1f = data.frame(Mstand)  # Se convierte la matriz Mstand a un data.frame porque así lo requiere la función kmeans.
+km_clusters = kmeans(M1f, centers = 3)
+fviz_cluster(object = km_clusters, data = M1f, show.clust.cent = TRUE, ellipse.type = "convex", star.plot = FALSE, repel = TRUE, geom="point")
+```
+
+
+
+```{r}
+M1f = data.frame(Mstand)  # Se convierte la matriz Mstand a un data.frame porque así lo requiere la función kmeans.
+km_clusters = kmeans(M1f, centers = 5)
+fviz_cluster(object = km_clusters, data = M1f, show.clust.cent = TRUE, ellipse.type = "convex", star.plot = FALSE, repel = TRUE, geom="point")
+```
+
+
+# 3) Definan el número de agrupaciones óptimas.
+```{r}
+fviz_nbclust(M1f, kmeans)
+```
+
+```{r}
+
+M1f = data.frame(Mstand)  # Se convierte la matriz Mstand a un data.frame porque así lo requiere la función kmeans.
+km_clusters = kmeans(M1f, centers = 2)
+fviz_cluster(object = km_clusters, data = M1f, show.clust.cent = TRUE, ellipse.type = "convex", star.plot = FALSE, repel = TRUE, geom="point")
+
+```
+
+Se observa que la cantidad máxima recomendada de clusters son 2, sin embargo es posible segmentarlos en la cantidad que se requiera dependiendo de cual sea la necesidad a cumplir cuando se realiza este metodo.

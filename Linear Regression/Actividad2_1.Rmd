@@ -1,0 +1,218 @@
+---
+title: "Actividad 2.1"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "2024-09-20"
+output: pdf_document
+---
+
+# 0 Se importan las librerias
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+library(lmtest)
+
+```
+# 1) Analisis exploratorio
+Se importan los datos
+```{r}
+df <- mtcars
+```
+
+Se inspeccionan los datos
+```{r}
+glimpse(df)
+```
+
+## Se seleccionan las variables, mpg, cyl, hp, wt, vs. Para explorar su relación entre ellos
+```{r}
+datos <- df %>% select(mpg,cyl,hp,wt,vs)
+```
+
+## A) Gráficos de dispersión
+```{r}
+plot(datos)
+```
+
+
+## B) Matriz de varianzas y covarianzas
+```{r}
+cov(datos)
+```
+## C) Matriz de correlación
+```{r}
+cor(datos)
+```
+## D) Seleccione una variable predictora y argumente la selección de su variable independiente.
+Se selecciona la variable de peso como variable predictora pues esta cuenta con un valor cercano a -1 de correlación, lo que significa que estará relacionada de manera inversamente proporcional. Y una covarianza baja lo que hace que los valores no cambien tanto dependiendo de que valor tenga cada uno.
+
+```{r}
+y <- datos %>% select(mpg) %>% .$mpg
+x <- datos %>% select(wt)
+x <- cbind(1, x$wt)
+```
+
+```{r}
+y
+```
+
+# 2) Metodo de minimos cuadrados
+Modelo de regresión lineal
+$$
+\beta = (X^{T}X)^{-1}X^{T}Y
+$$
+Se resuelve para el modelo de regresión lineal
+```{r}
+beta <- solve(t(x) %*% x) %*% t(x) %*% y
+```
+
+```{r}
+beta
+```
+Modelo de regresión obtenido
+$$
+y = 37.28-5.34x
+$$
+
+# 3) Regresión lineal en R
+```{r}
+model <- lm(y ~ x[,2])
+intercept <- model$coefficients[1]
+values <- model$coefficients[2]
+model
+```
+Modelo obtenido
+$$
+y = 37.28-5.34x
+$$
+# 4) Representación gráfica
+```{r}
+plot(x[,2], y ,ylab = "Millas por galon" ,xlab = "Peso (1000lb)")
+abline(model)
+title("Regresión lineal")
+text(x=4.7, y=30, "Ecuación: y= 37.285 + -5.344x")
+```
+
+# 5) Coeficiente de determinación
+```{r}
+summary(model)
+```
+El modelo se ajusta al 74.46% de los datos
+
+
+# 6) Validación del modelo
+
+## 6.1 Significancia de los coeficientes de regresión
+
+T Test
+
+-   $H_0:=$ El coeficiente es igual a 0.
+
+-   $H_A:=$ El coeficiente no es igual a 0.
+
+Significancia de los coeficientes de regresión:
+
+```{r}
+summary(model)
+```
+
+El resumen muestra los resultados de la prueba de T regresó valores de 19.858 y -9.559, por lo que los coeficientes del modelo sugerido son significativos. Dado que $p<0.05$, se rechaza la hipotesis nula, lo que demuestra que los coeficientes son diferentes a 0, asi se demuestra que los coeficientes obtenidos son significativos.
+
+## 6.2 Linealidad
+
+-   $H_0:=$ La relación entre la variable independiente y dependiente es lineal
+
+-   $H_A:=$ La relación es no lineal
+
+
+```{r}
+plot(fitted(model), resid(model), main = "Residuos vs Valores Predichos")
+```
+```{r}
+resettest(model)
+```
+Se obtiene un p-value para la prueba de linealidad de 0.01263, por lo que se rechaza la hipotesis nula, de esta manera se demuestra que existe otro tipo de relación no lineal en el modelo.
+
+
+## 6.3) Media de cero de los residuos
+
+T Test
+
+-   $H_0:=$ La media de los errores es igual a 0.
+
+-   $H_A:=$ La media de los errores no es igual a 0.
+
+```{r}
+t.test(model$residuals)
+```
+Se obtuvo que el resultado de la prueba da como resultado que p = 1. Por lo que no es posible rechazar la hipotesis nula. Por lo tanto se tiene un error promedio de 0 en el modelo.
+
+## 6.4) Normalidad de residuos
+
+T Test
+
+-   $H_0:=$ Los residuos tienen una distribución normal
+
+-   $H_A:=$ Los residuos no tienen una distribución normal
+
+
+```{r}
+shapiro.test(model$residuals)
+qqnorm(model$residuals)
+qqline(model$residuals)
+hist(model$residuals)
+```
+Se obtiene un valor de p=0.1044, por lo tanto no existe evidencia para rechazar la hipotesis nula. De esta manera se sabe que los residuos no se desvian de una distribución normal.
+
+## 6.5) Breusch-Pagan
+
+-   $H_0:=$ Los datos tienen homocedasticidad.
+
+-   $H_A:=$ Los datos no tienen homocedasticidad.
+
+```{r}
+bptest(model)  
+```
+El test de Breusch-Pagan produce un valor de p de 0.8406, dado que es mayor que 0.05. Se falla en rechazar la hipotesis nula. Esto demuestra que el modelo tiene varianza constante.
+
+
+Test de white
+```{r}
+# Subset the relevant variables: mpg (y) and wt (x)
+datos_subset <- datos %>% select(mpg, wt)
+
+model <- lm(mpg ~ wt, data = datos_subset)
+
+bptest(model, varformula = ~ wt + I(wt^2), data = datos_subset)
+
+```
+El test de White produce un valor de p de 0.505, dado que es mayor que 0.05. Se falla en rechazar la hipotesis nula. Esto demuestra que el modelo tiene varianza constante.
+
+
+```{r}
+plot(model$fitted.values, model$residuals)
+abline(h=0, col = "red", lwd = 2)
+```
+## 6.6) Independencia
+Test de Durbin Watson
+
+-   $H_0:=$ No existe autocorrelación en los datos
+
+-   $H_A:=$ Existe autocorrelacion en los datos.
+
+```{r}
+dwtest(model)
+plot(model$residuals)
+abline(h=0, col = "red", lwd = 2)
+```
+Dado que el valor obtenido por el test de durbin watson da un valor de 0.0102 y esto es menor que 0.05, se rechaza la hipotesis nula. Esto significa que existe una correlación positiva en los residuos, por lo que estos no son independientes. La estadistica de durbin watson cercana a 1.25 sugiere esta misma correlación positiva.
+
+
+# Conclusiones
+El análisis realizado demuestra una relación lineal negativa entre el consumo de combustible de los automóviles y su peso. Esto indica que, a medida que aumenta el peso, el consumo de combustible aumenta.
+
+A pesar de la solidez de los coeficientes encontrados, el modelo puede ser mejorado. Dado que se rechaza la hipotesis nula de linealidad, significa que puede ser que la relación presente no sea completamente lineal y el modelo podria mejorar. Ademas existe autocorrelación positiva en los residuos, lo cual muestra que estos no son independientes, afectando asi la presición del modelo.
+
+Por otro lado la media de los residuos es cero, siguen una distribución normal y se mantiene la homocedasticidad.
+
+Esto muestra que el modelo de regresión obtenido es estadísticamente significativo y captura de manera correcta la relación entre el peso y las millas por galon. Es importante abordar la no linealidad observada para futuros modelo. De manera que se pueda mejorar su precisión.
+

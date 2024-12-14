@@ -1,0 +1,190 @@
+---
+title: "Actividad1_6"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+df <- read.csv("paises_mundo.csv")
+```
+
+
+```{r}
+x1 <- df$CrecPobl
+x2 <- df$MortInf
+x3 <- df$PorcMujeres
+x4 <- df$PNB95
+x5 <- df$ProdElec
+x6 <- df$LinTelf
+x7 <- df$ConsAgua
+x8 <- df$PropBosq
+x9 <- df$PropDefor
+x10 <- df$ConsEner
+x11 <- df$EmisCO2
+
+```
+
+# Parte 1
+Calcule las matrices de varianza y covarianza, asi como la matriz de correlaciones
+## Matriz de covarianzas
+```{r}
+cov_df <- cov(df)
+cov_df
+```
+### Proporción de la varianza
+```{r}
+eigen_cov_df <- eigen(cov_df)
+
+# Proporción de varianza explicada por componente
+print("Proporción de varianza explicada por componente")
+round(eigen_cov_df$values / sum(eigen_cov_df$values),5) 
+
+# Acumule los resultados anteriores, para obtener la varianza acumulada en cada componente
+print("Varianza acumulada por componente")
+cumsum(eigen_cov_df$values) / sum(eigen_cov_df$values)
+```
+
+```{r}
+round(eigen_cov_df$vectors[,c(1,2)],4)
+```
+
+*Según los resultados anteriores, ¿qué componentes son los más importantes?*
+
+Los primeros dos componentes conjuntamente explican el 99.99% de la variación de los datos, por lo que estos componentes se usarán para reducir la dimensionalidad de los datos y se perdera unicamente un 0.01% de la información
+
+*Escriba la ecuación de la combinación lineal de los Componentes principales CP1 y CP2. ¿Qué variables son las que más contribuyen a la primera y segunda componentes principales? (observe los coeficientes en valor absoluto de las combinaciones lineales). Justifique su respuesta.*
+
+$$PC_1 = 0.8880x_4 + 0.4597x_5$$ 
+y 
+$$PC_2 = 0.4598x_4-0.888x_5$$ 
+
+Para el primer componente, las variables 4, 5, y 10 son las que más contibuyen a la variación a lo largo de este componente. Sin embargo el segundo componente tiene una contribución mayor con las variables 4, 5, y 7. Dado que estas tienen la mayor magnitud en los eigenvectores de covarianza a comparación del resto.
+
+Es por esto que las variables de PNB95 $x_4$, ProdElec $x_5$, ConsAgua $x_7$ y ConsEner $x_{10}$ son las que explican de mejor manera la variabilidad de $Y$.
+
+
+## Matriz de correlaciones
+```{r}
+cor_df <- cor(df)
+cor_df
+```
+
+
+```{r}
+eigen_cor_df <- eigen(cor_df)
+
+# Proporción de varianza explicada por componente
+print("Proporción de varianza explicada por componente")
+eigen_cor_df$values / sum(eigen_cor_df$values)
+# Acumule los resultados anteriores, para obtener la varianza acumulada en cada componente
+print("Varianza acumulada por componente")
+cumsum(eigen_cor_df$values / sum(eigen_cor_df$values))
+```
+*Según los resultados anteriores, ¿qué componentes son los más importantes?*
+
+Los primeros 7 componentes explican el 93.5% de la variación de los datos. Fue más complicado reducir la dimensionalidad de los datos atraves de la correlación.
+
+*Escriba la ecuación de la combinación lineal de los Componentes principales CP1 y CP2. ¿Qué variables son las que más contribuyen a la primera y segunda componentes principales? (observe los coeficientes en valor absoluto de las combinaciones lineales). Justifique su respuesta.*
+
+```{r}
+round(eigen_cor_df$vectors[,c(1,2)],2)
+```
+
+$$PC_1 = -0.31x_1-0.39x_2+0.12x_3+0.3x_4+0.26x_5+0.45x_6-0.24x_9+0.42x_{10}+0.37x_11$$ 
+y 
+$$PC_2 = 0.35x_1-0.58x_3-0.18x_4-0.17x_5+0.32x_7-0.46x_8-0.15x_9+0.23x_{10}+0.29x_{11}$$
+
+
+Para el primer componente principal, las variables 6, 2, y 10 contribuyeron de mayor manera para explicar la variación. El segundo componente principal usa las variables 3, 1, y 8. Los resultados obtenidos de la matriz de covarianzas, cada coeficiente presenta distintas varianzas sobre todas las variables. Es decir, en la matriz de covarianzas dos variables representan el 99.99% de los datos, mientras que en el de correlacion es necesario utilizar 7 para 93.5%.
+
+# Parte 2
+
+```{r}
+library(stats)
+datos=df
+cpS=princomp(datos,cor=FALSE)
+cpaS=as.matrix(datos)%*%cpS$loadings
+plot(cpaS[,1:2],type="p", main = "PCA en covarianzas")
+text(cpaS[,1],cpaS[,2],1:nrow(cpaS))
+biplot(cpS)
+```
+
+En estos gráficos podemos observar como las variables PNB95 y ProdElec tienen un gran peso sobre los dos componentes principales iniciales. Se observa que los datos atípicos afectan la variación de los datos. Es probable que la magnitud de ambas variables este afectando su influencia en las componentes.
+
+```{r}
+cpR=princomp(df,cor=TRUE)
+cpaR=as.matrix(df)%*%cpR$loadings
+
+plot(cpaR[,1:2],type="p", main = "PCA en correlaciones")
+text(cpaR[,1],cpaR[,2],1:nrow(cpaR))
+biplot(cpR)
+```
+
+Se observa una relación lineal entre el componente 1 y componente 2. Se observa una cantidad de datos sesgados hacia arriba de los componentes. En este caso al estar estandarizadas las variables se encontró que la mayoria de las variables tienen un impacto similar en los componentes. Esto se debe a que el PCA es sensible a la magnitud de los datos y de esta manera se lográ explicar de mejor manera la varianza de los datos. 
+
+```{r}
+summary(cpS)
+cpS$loadings
+cpS$scores
+```
+
+Usando el comando summary en el análisis de componentes principales sobre la matriz de covarianzas, se obtiene de manera automatizada lo obtenido en la parte 1. La matriz de loadings nos permite encontrar las variables y coeficientes que son utilizados para llegar a cada combinacion lineal del componente principal. La tabla de scoring muestra la evaluación del score de cada componente en cada punto del set de datos.
+
+# Parte 3
+
+```{r}
+library(FactoMineR)
+library(ggplot2) 
+library(factoextra)
+fviz_pca_ind(cpR, col.ind = "blue", addEllipses = TRUE, repel = FALSE)
+fviz_pca_var(cpR, col.var = "red", addEllipses = TRUE, repel = TRUE)
+fviz_screeplot(cpR)
+fviz_contrib(cpR, choice = "var")
+```
+
+En el primer estan las observaciones y como les influyen en los dos primeros componentes principales, la elipse permite encontrar agrupamientos en los datos, los cuales serán observaciones con valores similares.
+
+El grafico de variables, se observan los vectores de las variables originales y su influencia en cada componente principal. Esto nos permite saber si alguna variable influye más y asi se puede entender el porqué. 
+
+El Scree plot muestra la varianza explicada por cada componente principal,entre más componenetes principales tomemos, mayor será el porcentaje de información original que se conserve, en este caso es importante tomar los primeros 7 componentes principales para mantener suficiente información.
+
+El grafico de contribucion de las variables muestra que tanto contribuye cada variable al componente principal 1, las variables que más influyen es Lintelf y ConsEner
+
+
+
+# Parte 4
+
+## Compare los resultados obtenidos con la matriz de varianza-covarianza y con la correlación . ¿Qué concluye? ¿Cuál de los dos procedimientos aporta componentes con de mayor interés?
+
+El método de PCA sobre la matriz de covarianza la variabilidad de mejor manera y usa dos componentes principales, mientras que el método de PCA sobre la matriz de correlación utiliza más componentes principales. Sin embargo, este análisis está sesgado puesto que las variables tienen diferentes escalas. En la matriz de correlación se obtuvieron mejores resultados pues este metodo estandariza las variables y permite una comparación de una misma escala. A pesar de que no disminuye la dimensionalidad de una manera significativa, este metodo explica de una mejor manera las variables.
+
+## Indique cuál de los dos análisis (a partir de la matriz de varianza y covarianza o de correlación) resulta mejor para los datos indicadores económicos y sociales del 96 países en el mundo. Comparar los resultados y argumentar cuál es mejor según los resultados obtenidos.
+
+La matriz de correlación será más apropiada para analizar los indicadores económicos y sociales, puesto que aseguran que las variables están en una escala comparable.
+
+## ¿Qué variables son las que más contribuyen a la primera y segunda componentes principales del método seleccionado? (observa los coeficientes en valor absoluto de las combinaciones lineales, auxíliate también de los gráficos)
+
+PC1) Línea telefónica, Consumo de Energía per Cápita, Mortalidad Infantil, Emisiones de CO2, Crecimiento de Poblacion.
+
+PC2) Porcentaje de Mujeres, Proporción de Bosques, Crecimiento de Población, Emisiones de CO2, Consumo de Energía.
+
+## Escriba las combinaciones finales que se recomiendan para hacer el análisis de componentes principales.
+
+$$PC_1 = -0.31x_1-0.39x_2+0.12x_3+0.3x_4+0.26x_5+0.45x_6-0.24x_9+0.42x_{10}+0.37x_11$$ 
+
+y 
+$$PC_2 = 0.35x_1-0.58x_3-0.18x_4-0.17x_5+0.32x_7-0.46x_8-0.15x_9+0.23x_{10}+0.29x_{11}$$
+
+
+
+## Interpreta los resultados en término de agrupación de variables (puede ayudar "índice de riqueza", "índice de ruralidad", etc)
+
+El primer componente parece estar resumiendo las variables de desarrollo económico,pues las variables de consumo de energía per cápita, el número de líneas telefónicas, y las emisiones de CO2 son indican desarrollo industrial y económico. La mortalidad infantil muestra el nivel de desarrollo, pues una mayor mortalidad infantil suele asociarse con un menor desarrollo economico y un alto indice de ruralidad o poca accesibilidad a medicina.
+
+El segundo componente parece estar relacionado con la sostenibilidad ambiental. La cantidad de bosques y el crecimiento de la población muestran factores demograficos y ambientales. Este componente captura la relación entre desarrollo y sostenibilidad, donde un alto porcentaje de bosques y un menor consumo de energía podrían indicar países más rurales.
+

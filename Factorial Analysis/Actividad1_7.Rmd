@@ -1,0 +1,99 @@
+---
+title: "Actividad 1_7"
+author: "Ricardo Kaleb Flores Alfonso"
+date: "2024-10-08"
+output: pdf_document
+---
+# 0) Cargamos la base de datos
+```{r}
+
+df = read.csv("datoslago.csv")
+#Cargamos librería
+library(psych)
+```
+
+# 1) Obtener la matriz de correlaciones y la matriz de valores p de significancia por pares.
+```{r}
+corr.test(df,adjust="none")  
+```
+La correlación entre Tamaño y LnTamaño tiene un valor de 0.97, lo que indica que las variables tienen una alta correlación lineal. De igual manera Tamaño y Proteínas tiene una alta correlación con 0.63.
+Para los p valores, la mayoría de las correlaciones entre las variables son significativas menos la deLnproteinas con Temperatura. Lo que implica que existen relaciones entre las distintas variables
+
+
+# 2) Hacer una gráfica de la matriz de correlaciones. Hacer un comentario entre todos los del equipo de la gráfica.
+```{r}
+#Cargamos librerias
+library(polycor)
+library(ggcorrplot)
+
+mat_cor <- hetcor(df)$correlations
+ggcorrplot(mat_cor,hc.order = T)
+```
+En este caso tambien se observa la alta correlación lineal que existe, tanto positiva como negativa entre las variables.
+
+# 3) Aplicar una prueba de correlación conjunta a los datos para verficar si es aplicable el Análisis Factorial y concluir.
+
+$Ho: p<=0.05$las variables son ortogonales, no son correlacionadas
+$H1: p >0.05$No es cierto, la matriz de correlación difiere significativamente de la matriz identidad, por tanto, sí hay correlación conjunta significativa.
+```{r}
+#Cargamos librería
+library(performance)
+
+check_sphericity_bartlett(df)
+
+# Para obtener valor del estadístico (chi-cuadrada), del parámetro (grados de libertad) y del valor p):
+b = check_sphericity_bartlett(df)
+b$chisq
+b$p
+b$dof
+```
+
+Al obtener un valor de p extremadamente bajo y menor que 0.05, hay suficiente evidencia para rechazar la hipotesis nula, por lo que se acepta la hipotesis altenartiva y si existe suficiente correlación para hacer el analisis factorial.
+
+# 4) Otra prueba para, para comprobar si el análisis factorial es viable, y muy citada, es la prueba KMO. Aplíquela a estos datos, ¿contradice los resutados del inciso anterior?
+0.90 a 1.00 maravilloso
+0.80 a 0.89 meritorio
+0.70 a 0.79 medio
+0.60 a 0.69 mediocre
+0.50 a 0.59 miserable
+0.00 a 0.49 inaceptable
+```{r}
+R = cor(df)
+K = KMO(R)
+cat("El valor del estadístico es: ", K$MSA)
+```
+El valor del estadístico fue de 0.6297, lo que es un resultado mediocre en la escala, eso significa que    el análisis factorial es viable, pero no es ideal.
+
+# 5) Si los datos pasaron la prueba de los puntos anteriores 3 y 4, hacer un análisis factorial usando el criterio de máxima verosimilitud y el de mínimo residuo
+```{r}
+R = cor(df)
+modelo1 = fa(R, nfactors =2, rotate = "none", fm = "mle")   
+modelo2 = fa(R, nfactors = 2, rotate = "none", fm = "minres") 
+M1_commd = sort(modelo1$communality,decreasing = T)
+M2_commd= sort(modelo2$communality,decreasing = T)
+cbind(M1_commd,M2_commd)
+```
+La variables que explican de mejor manera la varianza de los datos son LnTamaño, Tamaño y Lnproteinas. Tanto para el analisis de maxima verosimilitud y minimo residuo.
+
+# 6) Determine el número de factores adecuado según el criterio del gráfico de Cattell
+```{r}
+R = cor(df)
+scree(R)
+```
+El gráfico muestra una que despues del segundo factor, la ganancia de información es menor, por lo que dos factores son suficientes para explicar la mayor parte de la varianza.
+
+# 7) Realicen los gráficos correspondientes a la rotación Varimax y quartimax de los datos e interpreten en equipo los resultados.
+```{r}
+library(GPArotation)
+
+R = cor(df)
+rot = c("none", "varimax", "quartimax")
+bi_mod = function(tipo){
+biplot.psych(fa(df,nfactors = 2,fm="mle",rotate = tipo),main = "",col=c(2,3,4),pch = c(21,18),group = df[,"Tamano"])  }
+sapply(rot,bi_mod)
+```
+
+La rotación nos permite observar de que manera se distribuye la varianza, esto pues hace que las relaciones entre variables y factores se observe mejor.
+
+# 8) ¿Qué pueden concluir? ¿Resultó razonable para este caso el modelo de análisis factorial? Expliquen.
+El análisis factorial es razonable para este conjunto de datos, a traves del grafico de Scree sabemos que,  dos factores explican la mayor parte de la varianza. De igual manera sabemos segun la prueba de kmo, que es posible aplicar el analisis de factores, sin embargo no es optimo. Sin embargo vemos que es valido el analisis dada la prueba de Bartlett

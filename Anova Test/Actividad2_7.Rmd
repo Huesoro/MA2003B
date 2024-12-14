@@ -1,0 +1,139 @@
+---
+title: "Actividad2.7"
+author: "Ricardo Kaleb Flores Alfonso, A01198716"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+```{r}
+library(ggplot2)
+library(stats)
+```
+
+#) 0) Se importan los datos
+```{r}
+df <- read.csv("resistencia.csv")
+```
+
+# 1) Análisis exploratorio
+```{r}
+# Calcular la media de la resistencia por tratamiento (Concentración de Madera Dura)
+mean_resistance <- aggregate(Resistencia ~ Concentracion, data = df, FUN = mean)
+print(mean_resistance)
+
+# Crear el boxplot de Resistencia a la Tensión por Concentración de Madera Dura
+boxplot(Resistencia ~ Concentracion, data = df,
+        main = "Boxplot de Resistencia a la Tensión por Concentración de Madera Dura",
+        xlab = "Concentración de Madera Dura",
+        ylab = "Resistencia a la Tensión",
+        col = "lightblue", border = "black")
+
+```
+
+Se observa que mientras aumenta la concentración de madera, el promedio de resistencia tambien aumenta, lo que sugiere una relación lineal positiva entre las variables
+
+
+# 2) Hipótesis estadística
+Hipótesis nula $H_0$: No hay diferencias significativas en la resistencia a la tensión entre los diferentes niveles de concentración de madera dura.
+
+Hipótesis alternativa $H_1$: Existen diferencias significativas en la resistencia a la tensión entre al menos dos niveles de concentración de madera dura.
+
+# 3) Prueba de Anova
+```{r}
+#Calcular la media global
+media_global <- mean(df$Resistencia)
+
+#Calcular la suma de cuadrados entre grupos
+ss_entre <- sum(aggregate(Resistencia ~ Concentracion, df, function(x) length(x) * (mean(x) - media_global)^2)$Resistencia)
+
+#Calcular la suma de cuadrados intra grupos
+ss_intra <- sum((df$Resistencia - ave(df$Resistencia, df$Concentracion))^2)
+
+#Calcular las medias de cuadrados
+df_entre <- length(unique(df$Concentracion)) - 1  # Grados de libertad entre grupos
+df_intra <- nrow(df) - length(unique(df$Concentracion))  # Grados de libertad intra grupos
+
+ms_entre <- ss_entre / df_entre
+ms_intra <- ss_intra / df_intra
+
+# Calcular el estadístico F
+F_value <- ms_entre / ms_intra
+
+# Calcular el p-valor basado en la distribución F
+p_value <- pf(F_value, df_entre, df_intra, lower.tail = FALSE)
+
+# Mostrar resultados
+cat("Suma de cuadrados entre grupos:", ss_entre, "\n")
+cat("Suma de cuadrados intra grupos:", ss_intra, "\n")
+cat("Estadístico F:", F_value, "\n")
+cat("p-valor:", p_value, "\n")
+```
+
+# 4) Prueba de Anova en R
+```{r}
+modelo <- aov(Resistencia ~ as.factor(Concentracion), data = df)
+summary(modelo)
+```
+Mediante las pruebas de Anova se obtuvo un valor de $p<0.05$, por lo que se rechaza la hipotesis nula, la hipotesis alternativa muestra que existe diferencia significativa entre al menos dos niveles de concentración de madera
+
+
+# 5) Diferencias por pares
+```{r}
+tukey_result <- TukeyHSD(modelo)
+
+
+plot(tukey_result)
+```
+
+El gráfico Tukey muestra las diferencias entre los niveles. Si los intervalos de confianza no incluyen 0, hay diferencias significativas entre esos pares de concentraciones, es por esto que se observa que existe una diferencia significativa entre los niveles 15 y 5, asi como los niveles 20 y 15.
+
+# 6) Validación de supuestos
+## 6.1) Normalidad
+Hipótesis nula $H_0$: No existe normalidad en los residuos del modelo
+
+Hipótesis alternativa $H_1$: La normalidad en los residuos son normales
+```{r}
+# Test de Shapiro-Wilk para normalidad
+shapiro_test <- shapiro.test(residuals(modelo))
+print(shapiro_test)
+
+```
+El test de Shapiro-Wilk obtuvo un p-valor de 0.5757, por lo que no hay evidencia para rechazar la normalidad de los residuos. Asi que el supuesto se cumple
+
+## 6.2) Homocedasticidad
+Hipótesis nula $H_0$: Existe homocedasticidad en los residuos
+
+Hipótesis alternativa $H_1$: La varianza varia entre los grupos, heterocedasticidad
+```{r}
+library(lmtest)
+# Test de Bartlett para homocedasticidad
+bartlett_test <- bartlett.test(Resistencia ~ Concentracion, data = df)
+print(bartlett_test)
+```
+El test de Bartlett obtuvo un valor de $p=0.7686>0.05$, no hay evidencia para rechazar la hipotesis nula, por lo que el supuesto de homocedasticidad se cumple.
+
+## 6.3) Independencia
+Hipótesis nula $H_0$: Las observaciones se obtuvieron de manera independiente
+
+Hipótesis alternativa $H_1$: Las observaciones tienen correlación entre ellas.
+```{r}
+
+tabla <- table(df$Resistencia, df$Concentracion)
+
+chisq.test(tabla)
+```
+Se obtuvo un p valor de 0.5551, lo que sugiere que no hay evidencia para rechazar la independencia de las observaciones.
+
+
+# 7) Intervalos de confianza
+
+```{r}
+intervalos_confianza <- tapply(df$Resistencia, df$Concentracion, function(x) t.test(x)$conf.int)
+
+print(intervalos_confianza)
+```
+Estos intervalos muestran que las medias de los diferentes niveles de concentración están separadas, lo que da evidencias para demostrar los resultados en el ANOVA y la prueba de Tukey.
+# 8) Conclusión
+
+El análisis sugiere que aumentar la concentración de madera dura aumenta significativamente la resistencia a la tensión. Todos los supuestos del modelo ANOVA se cumplieron, lo que valida la robustez del análisis.
+
+En resumen, los diferentes niveles de concentración tienen efectos significativamente diferentes sobre la resistencia, y este efecto se ha validado estadísticamente y mediante los intervalos de confianza.
